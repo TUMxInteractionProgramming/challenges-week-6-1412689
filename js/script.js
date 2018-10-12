@@ -27,12 +27,15 @@ var currentLocation = {
  * Switch channels name in the right app bar
  * @param channelObject
  */
-function switchChannel(channelObject) {
+function switchChannel(channelObject, channelElement) {
     // Log the channel switch
     console.log("Tuning in to channel", channelObject);
 
     // #10 #new: switching channels aborts "create new channel"-mode
     abortCreationMode();
+
+    // call function showMessages
+    showMessages();
 
     // Write the new channel to the right app bar using object property
     document.getElementById('channel-name').innerHTML = channelObject.name;
@@ -52,7 +55,8 @@ function switchChannel(channelObject) {
     /* highlight the selected #channel.
        This is inefficient (jQuery has to search all channel list items), but we'll change it later on */
     $('#channels li').removeClass('selected');
-    $('#channels li:contains(' + channelObject.name + ')').addClass('selected');
+    //$('#channels li:contains(' + channelObject.name + ')').addClass('selected');
+    $(channelElement).addClass('selected');
 
     /* store selected channel in global variable */
     currentChannel = channelObject;
@@ -182,6 +186,26 @@ function createMessageElement(messageObject) {
         '<button class="accent">+5 min.</button>' +
         '</div>';
 }
+function showMessages(){
+
+    var A = [];
+    $('#messages').empty();
+
+    /* #10 append channels from #array with a #for loop */
+    for (i = 0; i < channels.length; i++) {
+        if(channels[i].name == currentChannel.name)
+        {
+            A = channels[i].messages;
+            
+        }
+        $.each (A, function (key, value) {
+            // alert(value);
+            $('#messages').append(createMessageElement(value));
+          })
+    }
+    
+
+}
 
 /* #10 Three #compare functions to #sort channels */
 /**
@@ -225,6 +249,8 @@ function listChannels(criterion) {
     for (i = 0; i < channels.length; i++) {
         $('#channels ul').append(createChannelElement(channels[i]));
     };
+    $('#channels li').removeClass('selected');
+    $('#channels li:contains(' + currentChannel.name + ')').addClass('selected');
 }
 
 /**
@@ -324,6 +350,9 @@ function createChannelElement(channelObject) {
 
     // The chevron
     $('<i>').addClass('fas').addClass('fa-chevron-right').appendTo(meta);
+    $(channel).click(function(){
+        switchChannel(channelObject, this);
+    })
 
     // return the complete channel
     return channel;
