@@ -22,6 +22,33 @@ var currentLocation = {
     longitude: 11.634431,
     what3words: "shelf.jetted.purple"
 };
+$().ready(function () {
+    listChannels(compareNew); 
+    loadEmojis();	 
+    var intervalID = setInterval(function() {
+        console.log("Updating message elements...");
+
+        $.each(currentChannel.messages, function(i, val) {			 
+            if (val.update() == -1) {
+                currentChannel.messages.splice(i, 1);				 
+                currentChannel.messageCount -= 1;
+                
+            };
+
+            var timeLeftString = val.messageElement.find('em').text();
+			 var index = timeLeftString.indexOf(" min.");
+			 var timeLeft = timeLeftString.slice(0, index);
+			 timeLeft -= 1/6;
+             var rounded = Math.round(timeLeft * 10)/10;
+             
+			 console.log(timeLeft);
+             console.log(rounded);
+             
+			 val.messageElement.find('em').text(rounded + ' min. left')
+       });
+    },3000);
+    console.log("App is initialized");
+});
 
 /**
  * Switch channels name in the right app bar
@@ -34,8 +61,7 @@ function switchChannel(channelObject, channelElement) {
     // #10 #new: switching channels aborts "create new channel"-mode
     abortCreationMode();
 
-    // call function showMessages
-    showMessages();
+    
 
     // Write the new channel to the right app bar using object property
     document.getElementById('channel-name').innerHTML = channelObject.name;
@@ -58,8 +84,12 @@ function switchChannel(channelObject, channelElement) {
     //$('#channels li:contains(' + channelObject.name + ')').addClass('selected');
     $(channelElement).addClass('selected');
 
+    
     /* store selected channel in global variable */
     currentChannel = channelObject;
+    // call function showMessages
+    $('#messages').empty();
+    showMessages();
 }
 
 /* liking a channel on #click */
@@ -130,6 +160,31 @@ function Message(text) {
     this.text = text;
     // own message
     this.own = true;
+
+    //function update
+    this.update = function() {
+        var timeLeftString = this.messageElement.find('em').text();
+
+        var index = timeLeftString.indexOf(" min.");
+
+        var timeLeft = timeLeftString.slice(0, index);
+
+        timeLeft -= 1/6;
+
+        var rounded = Math.round(timeLeft * 10)/10;
+
+        if (timeLeft < 0) {
+            this.messageElement.remove();
+            return -1;
+        } else if (timeLeft < 5) {   // text in primary color if time left is less than 5 min
+           this.messageElement.find('em').text(rounded + ' min. left').css("color","red");
+        }
+       else{
+           this.messageElement.find('em').text(rounded + ' min. left');	 
+        };
+       
+       
+   }
 }
 
 function sendMessage() {
@@ -155,6 +210,14 @@ function sendMessage() {
 
     // Adding the message to the messages-div
     $('#messages').append(createMessageElement(message));
+	
+	 $('.message button').click(function() {
+		 var timeStr = $(this).parent().find('em').text();
+		 var endingIndex = timeStr.indexOf(" min.");
+		 var time = Number(timeStr.slice(0, endingIndex));
+		 time += 5;
+		 $(this).parent().find('em').text(time + " min. left");
+	 });
 
     // messages will scroll to a certain point if we apply a certain height, in this case the overall scrollHeight of the messages-div that increases with every message;
     $('#messages').scrollTop($('#messages').prop('scrollHeight'));
@@ -172,37 +235,46 @@ function createMessageElement(messageObject) {
     // Calculating the expiresIn-time from the expiresOn-property
     var expiresIn = Math.round((messageObject.expiresOn - Date.now()) / 1000 / 60);
 
+    
+
     // Creating a message-element
-    return '<div class="message'+
-        //this dynamically adds #own to the #message, based on the
-        //ternary operator. We need () in order not to disrupt the return.
-        (messageObject.own ? ' own' : '') +
-        '">' +
-        '<h3><a href="http://w3w.co/' + messageObject.createdBy + '" target="_blank">'+
+    // return '<div class="message'+
+    //     //this dynamically adds #own to the #message, based on the
+    //     //ternary operator. We need () in order not to disrupt the return.
+    //     (messageObject.own ? ' own' : '') +
+    //     '">' +
+    //     '<h3><a href="http://w3w.co/' + messageObject.createdBy + '" target="_blank">'+
+    //     '<strong>' + messageObject.createdBy + '</strong></a>' +
+    //     messageObject.createdOn.toLocaleString() +
+    //     '<em>' + expiresIn + ' min. left</em></h3>' +
+    //     '<p>' + messageObject.text + '</p>' +
+    //     '<button class="accent">+5 min.</button>' +
+    //     '</div>';
+
+    divElement = $('<div>').addClass("message");
+
+    messageObject.own ? divElement.addClass(' own') : divElement.addClass('')
+    
+	divElement.html('<h3><a href="http://w3w.co/' + messageObject.createdBy + '" target="_blank">'+
         '<strong>' + messageObject.createdBy + '</strong></a>' +
         messageObject.createdOn.toLocaleString() +
         '<em>' + expiresIn + ' min. left</em></h3>' +
         '<p>' + messageObject.text + '</p>' +
-        '<button class="accent">+5 min.</button>' +
-        '</div>';
+        '<button class="accent">+5 min.</button>');
+
+    messageObject.messageElement = divElement;
+    
+    return divElement;
 }
 function showMessages(){
-
-    var A = [];
-    $('#messages').empty();
-
-    /* #10 append channels from #array with a #for loop */
-    for (i = 0; i < channels.length; i++) {
-        if(channels[i].name == currentChannel.name)
-        {
-            A = channels[i].messages;
-            
-        }
-        $.each (A, function (key, value) {
-            // alert(value);
-            $('#messages').append(createMessageElement(value));
-          })
-    }
+    
+    $.each (currentChannel.messages, function (key, value) {
+        // alert(value);
+        createChannelElement(value);
+        $('#messages').append(createMessageElement(value));
+        $('#messages').scrollTop(('#messages').prop('scrollHeight'));
+      });
+    
     
 
 }
@@ -356,6 +428,7 @@ function createChannelElement(channelObject) {
 
     // return the complete channel
     return channel;
+
 }
 
 /**
@@ -384,3 +457,12 @@ function abortCreationMode() {
     $('#button-create').hide();
     $('#button-send').show();
 }
+
+
+
+$('input[type=text]').on('keydown', function(e){
+    if(e.which == 13 || event.keyCode == 13){
+        e.sendMessage();
+    }
+})
+
